@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # itu-crawler-project
 
 Sprint 0 scaffold for a localhost-runnable web crawler and search system.
@@ -60,3 +61,6 @@ python -m app.main search example
 - implement BFS traversal with a visited set
 - add a basic inverted index
 - report live status during indexing
+=======
+# itu-crawler-project
+>>>>>>> 819948b556967eab12e20d6b8dda188ee7385624
