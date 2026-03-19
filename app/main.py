@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from app.crawler import CrawlerService
 from app.index_store import SQLiteIndexStore
 from app.search import SearchService
+from app.server import run_server
 from app.status import StatusService
 
 
@@ -30,6 +31,13 @@ def build_parser() -> argparse.ArgumentParser:
     search_parser.add_argument("query", help="Query text.")
 
     subparsers.add_parser("status", help="Print current persisted status.")
+
+    serve_parser = subparsers.add_parser(
+        "serve",
+        help="Run the localhost server for background indexing and search.",
+    )
+    serve_parser.add_argument("--host", default="127.0.0.1", help="Host to bind.")
+    serve_parser.add_argument("--port", type=int, default=8000, help="Port to bind.")
     return parser
 
 
@@ -38,6 +46,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "serve":
+        run_server(host=args.host, port=args.port)
+        return 0
 
     store = SQLiteIndexStore()
     status_service = StatusService()

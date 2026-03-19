@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import sqlite3
+from dataclasses import replace
 from pathlib import Path
+from threading import Lock
 
 from app.models import StatusSnapshot
 
@@ -18,71 +20,81 @@ class StatusService:
         """Load the latest persisted status snapshot or an idle default."""
 
         self.db_path = Path(db_path) if db_path is not None else DEFAULT_DB_PATH
+        self._lock = Lock()
         self._initialize()
         self._snapshot = self._load_snapshot()
 
     def start(self, origin: str, max_depth: int, max_queue_size: int) -> None:
         """Record that an indexing run has started."""
 
-        self._snapshot = StatusSnapshot(
-            origin_url=origin,
-            max_depth=max_depth,
-            indexed_pages=0,
-            queued_urls=0,
-            max_queue_size=max_queue_size,
-            back_pressure_active=False,
-            is_indexing=True,
-            last_message="crawl starting",
-        )
-        self._persist_snapshot()
+        with self._lock:
+            self._snapshot = StatusSnapshot(
+                origin_url=origin,
+                max_depth=max_depth,
+                indexed_pages=0,
+                queued_urls=0,
+                max_queue_size=max_queue_size,
+                back_pressure_active=False,
+                is_indexing=True,
+                last_message="crawl starting",
+            )
+            self._persist_snapshot()
 
     def set_queue_depth(self, queued_urls: int) -> None:
         """Update the visible number of queued URLs."""
 
-        self._snapshot.queued_urls = max(queued_urls, 0)
-        self._snapshot.back_pressure_active = (
-            self._snapshot.max_queue_size > 0
-            and self._snapshot.queued_urls >= self._snapshot.max_queue_size
-        )
-        self._persist_snapshot()
+        with self._lock:
+            self._snapshot.queued_urls = max(queued_urls, 0)
+            self._snapshot.back_pressure_active = (
+                self._snapshot.max_queue_size > 0
+                and self._snapshot.queued_urls >= self._snapshot.max_queue_size
+            )
+            self._persist_snapshot()
 
     def increment_indexed_pages(self) -> None:
         """Increase the count of successfully stored HTML pages."""
 
-        self._snapshot.indexed_pages += 1
-        self._persist_snapshot()
+        with self._lock:
+            self._snapshot.indexed_pages += 1
+            self._persist_snapshot()
 
     def set_message(self, message: str) -> None:
         """Set a short status message describing current crawl progress."""
 
-        self._snapshot.last_message = message
-        self._persist_snapshot()
+        with self._lock:
+            self._snapshot.last_message = message
+            self._persist_snapshot()
 
     def finish(self, message: str = "crawl complete") -> None:
         """Mark the indexing run as complete."""
 
-        self._snapshot.is_indexing = False
-        self._snapshot.queued_urls = 0
-        self._snapshot.back_pressure_active = False
-        self._snapshot.last_message = message
-        self._persist_snapshot()
+        with self._lock:
+            self._snapshot.is_indexing = False
+            self._snapshot.queued_urls = 0
+            self._snapshot.back_pressure_active = False
+            self._snapshot.last_message = message
+            self._persist_snapshot()
 
     def snapshot(self) -> StatusSnapshot:
         """Return the latest known status information."""
 
-        return self._snapshot
+        with self._lock:
+            return replace(self._snapshot)
 
     def _connect(self) -> sqlite3.Connection:
         """Open a SQLite connection for the status database."""
 
-        connection = sqlite3.connect(self.db_path)
+        connection = sqlite3.connect(self.db_path, timeout=5.0)
         connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA busy_timeout = 5000")
         return connection
 
     def _initialize(self) -> None:
         """Create the status table if it does not already exist."""
 
         with self._connect() as connection:
+            connection.execute("PRAGMA journal_mode=WAL")
+            connection.execute("PRAGMA synchronous=NORMAL")
             connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS crawl_status (
