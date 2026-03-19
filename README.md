@@ -1,20 +1,31 @@
-<<<<<<< HEAD
 # itu-crawler-project
 
-Sprint 0 scaffold for a localhost-runnable web crawler and search system.
+Small localhost-runnable web crawler and search project for a take-home exercise.
 
 ## Goal
 
-Build a small, explainable Python system that can eventually:
+Build a simple Python system that can:
 - index from an origin URL up to depth `k`
 - avoid crawling the same page twice
-- search while indexing is still active
-- expose indexing status and back pressure
+- eventually support search results as `(relevant_url, origin_url, depth)`
+- expose indexing status and back pressure-related state
 
-## Sprint 0 Scope
+## Current Scope
 
-This sprint sets up the repository, module boundaries, and project documents.
-It does not implement real crawling, parsing, ranking, or concurrency yet.
+The current implementation includes the first working crawler core:
+- URL normalization
+- HTML fetch with the Python standard library
+- link extraction
+- basic title and body-text extraction
+- BFS traversal with visited tracking
+- max-depth enforcement
+- in-memory storage of crawled pages
+
+Still intentionally deferred:
+- search implementation
+- concurrency / worker pool
+- SQLite
+- localhost UI
 
 ## Repository Layout
 
@@ -32,35 +43,21 @@ docs/
   recommendation.md
 ```
 
-## Architecture Summary
-
-The first real version should stay single-machine and simple. A CLI will call a
-crawler service, a search service, and a status service. The crawler will likely
-use BFS so depth is easy to reason about. A small worker pool can pull URLs from
-a bounded queue, which gives basic back pressure. Shared in-memory state is the
-starting point, and SQLite can be added later if persistence becomes useful.
-
-## Planned Interfaces
-
-- `index(origin, k)` schedules a crawl from one origin URL.
-- `search(query)` returns `(relevant_url, origin_url, depth)` results.
-- `status` exposes progress, queue depth, and back pressure state.
-
-## Running the Scaffold
+## CLI Usage
 
 ```bash
-python -m app.main status
 python -m app.main index https://example.com 1
+python -m app.main status
 python -m app.main search example
 ```
 
-## Next Sprint
+`index` currently performs a real crawl and prints a short summary. `search`
+still uses the placeholder store interface and will be expanded in a later
+sprint.
 
-- fetch pages with the Python standard library
-- normalize and filter URLs
-- implement BFS traversal with a visited set
-- add a basic inverted index
-- report live status during indexing
-=======
-# itu-crawler-project
->>>>>>> 819948b556967eab12e20d6b8dda188ee7385624
+## Architecture Summary
+
+The project stays single-machine and standard-library oriented. The crawler uses
+a simple BFS queue, normalizes URLs before deduplication, skips non-HTML pages,
+and stores successful pages in memory. Status is tracked separately so CLI
+output can report crawl progress and final counts.
