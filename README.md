@@ -10,7 +10,7 @@ Build a simple Python system that can:
 - return search results as `(relevant_url, origin_url, depth)`
 - expose indexing status and back pressure-related state
 
-## Current Scope
+## Implemented Scope
 
 The current implementation includes:
 - URL normalization
@@ -22,13 +22,15 @@ The current implementation includes:
 - max-depth enforcement
 - SQLite-backed page persistence in `crawler.db`
 - persisted status for the latest crawl run
-- basic deterministic search over persisted pages
+- deterministic SQLite-backed search
 - a small localhost server for background indexing, search, and status
 
-Still intentionally deferred:
-- advanced concurrency
-- resume support
-- richer UI
+Current delivery-time limitations:
+- same-host crawling is still enforced
+- one background indexing job at a time
+- search scoring is intentionally simple and deterministic
+- resume / crash recovery is not fully implemented
+- the localhost UI is intentionally minimal
 
 ## Repository Layout
 
@@ -57,22 +59,21 @@ python -m app.main status
 python -m app.main serve --host 127.0.0.1 --port 8000
 ```
 
-`index`, `search`, and `status` still work as separate CLI commands. `serve`
-starts a localhost process that can run indexing in the background while search
-and status requests continue to work.
+`index`, `search`, and `status` work as separate CLI commands. `serve` starts a
+localhost process that can run indexing in the background while search and
+status continue to work.
 
 ## Localhost Interface
 
 - `GET /` renders a minimal HTML page with forms for indexing and search.
+- `POST /start-index` starts one background indexing run.
 - `GET /status` returns JSON status.
 - `GET /search?q=...` returns JSON results.
-- `POST /start-index` starts a background indexing run.
 
 ## Architecture Summary
 
-The project stays single-machine and standard-library oriented. The crawler now
-uses a bounded `queue.Queue` frontier and a small background worker model so the
-localhost server stays responsive during indexing. Pages are persisted into
-SQLite incrementally, search reads from the same database, and status is stored
-as the latest crawl snapshot so both the CLI and the server can inspect it while
-indexing is still active.
+The project stays single-machine and standard-library oriented. The crawler uses
+a bounded `queue.Queue` frontier, persists pages incrementally into SQLite, and
+updates a persisted latest-run status snapshot. The localhost server keeps a
+single background indexing thread alive so search and status can read the same
+SQLite database while indexing is still active.

@@ -9,7 +9,7 @@ The core interfaces are:
 - `index(origin, k)`: crawl from one origin URL up to depth `k` without processing the same page twice
 - `search(query)`: return ranked results as `(relevant_url, origin_url, depth)`
 
-This document defines the target behavior and architecture for the next implementation sprint. It is intentionally practical rather than aspirational.
+This document defines the delivered behavior and architecture of the current implementation. It is intentionally practical rather than aspirational.
 
 ## Goals
 
@@ -19,8 +19,8 @@ This document defines the target behavior and architecture for the next implemen
 - Guarantee per-run deduplication of normalized URLs.
 - Expose progress and queue-related status during indexing.
 - Structure the code so search can later run while indexing is active.
-- Start with in-memory state and make SQLite an optional future enhancement, not a requirement.
-- Provide a simple CLI as the primary user interface.
+- Use SQLite for persisted pages and latest-run status while keeping the storage layer small.
+- Provide a simple CLI plus a minimal localhost server/UI for background indexing, search, and status.
 
 ## Non-Goals
 
@@ -41,8 +41,8 @@ This document defines the target behavior and architecture for the next implemen
 - Only HTML responses are indexed. Non-HTML responses may be skipped after content-type inspection.
 - The crawler operates on relatively small demo sites or small slices of larger sites.
 - One indexing run is active at a time.
-- A new indexing run may replace the previous in-memory index for simplicity.
-- The primary interface is a CLI. A localhost UI is optional and may be added later.
+- A new indexing run may replace the previous persisted page set for simplicity.
+- The system supports both CLI commands and a minimal localhost UI/HTTP interface.
 - Search quality only needs to be reasonable and explainable, not state of the art.
 
 ## Functional Requirements
@@ -73,8 +73,8 @@ This document defines the target behavior and architecture for the next implemen
 - Return results as triples `(relevant_url, origin_url, depth)`.
 - Return results in ranked order using a simple deterministic heuristic.
 - Return an empty list when there are no matches.
-- Work against the current in-memory index.
-- Be structured so search can later run against partially built state while indexing is active.
+- Work against the current SQLite-backed index.
+- Allow search to run against partially built state while indexing is active in the localhost server.
 
 ### Status
 
@@ -91,7 +91,7 @@ This document defines the target behavior and architecture for the next implemen
 
 ### CLI / User Interaction
 
-- Provide a CLI as the first interface.
+- Provide a CLI and a minimal localhost server interface.
 - Support these commands at minimum:
   - `index <origin> <depth>`
   - `search <query>`
@@ -120,19 +120,21 @@ The system should remain a single Python process with clear service boundaries. 
 | `app/main.py` | CLI entry point, argument parsing, command routing |
 | `app/crawler.py` | Crawl coordinator, BFS frontier management, fetch scheduling, deduplication rules |
 | `app/parser.py` | URL normalization, link extraction, title extraction, body-text extraction |
-| `app/index_store.py` | In-memory storage for pages and searchable state |
+| `app/index_store.py` | SQLite-backed storage for pages and searchable state |
 | `app/search.py` | Query normalization, scoring, sorting, result formatting |
+| `app/server.py` | Minimal localhost server and background indexing entry points |
 | `app/status.py` | Status snapshot updates and read access |
 | `app/models.py` | Shared dataclasses for requests, page records, search results, and status |
 
 ### Runtime Shape
 
 - One active crawl coordinator controls the lifecycle of an indexing run.
-- A BFS frontier queue holds pending URLs together with their depth.
+- A bounded BFS frontier queue holds pending URLs together with their depth.
 - A visited set prevents duplicate processing.
-- The index store keeps page records in memory.
-- The search service reads from the index store and returns ranked results.
-- The status service exposes progress and queue state to the CLI.
+- A minimal localhost server can launch indexing in a background thread.
+- The index store keeps page records in SQLite.
+- The search service reads from SQLite and returns ranked results.
+- The status service exposes progress and queue state to both the CLI and the localhost server.
 
 This is intentionally not a service-oriented design. Everything lives in one process and communicates through direct Python objects.
 
@@ -154,7 +156,7 @@ This is intentionally not a service-oriented design. Everything lives in one pro
 | Visited URLs | `set[str]` | Prevent duplicate crawl work |
 | Frontier queue | `queue.Queue[FrontierItem]` or equivalent | Hold pending BFS work |
 | Frontier item | `url`, `depth`, `origin_url` | Represent one pending fetch |
-| Page store | `dict[str, PageRecord]` | Fast lookup by normalized URL |
+| Page store | SQLite `pages` table keyed by URL | Persist and read page content across processes |
 | Failure tracking | `dict[str, str]` or `list[tuple[str, str]]` | Record skipped or failed pages for status/debugging |
 
 ### Notes On Search Storage
@@ -166,7 +168,7 @@ The initial version does not need a full inverted index. For the expected projec
 1. Validate input.
 2. Normalize the origin URL.
 3. Initialize a fresh run state:
-   - clear or replace the previous in-memory index
+   - clear or replace the previous persisted page set
    - reset status counters
    - create an empty visited set
    - create a bounded frontier queue
@@ -240,13 +242,12 @@ The architecture should support a worker-pool implementation, but the design sho
 
 ### Search While Indexing
 
-The system should be designed so this is possible later, but full simultaneous search and indexing may be deferred until there is a long-lived process or local UI. A one-shot CLI process cannot easily search an in-memory crawl that is owned by another short-lived process.
+This is now supported at a practical demo level through the localhost server.
 
-The important requirement for the implementation sprint is architectural compatibility:
-
-- do not design the store in a way that assumes indexing must fully finish before any reads are possible
-- keep store updates small and consistent
-- keep status reads cheap
+- indexing runs in a background thread inside the long-lived local process
+- pages are written into SQLite incrementally as they are found
+- search reads from the same SQLite database while indexing is active
+- status reads remain cheap and reflect queue depth and latest progress
 
 ## Back Pressure Plan
 
@@ -290,29 +291,32 @@ Then sort by:
 
 ## CLI Or UI Scope
 
-### Required For The First Working Version
+### Required For The Delivered Version
 
-- CLI only.
+- CLI plus a minimal localhost server.
 - Example commands:
   - `python -m app.main index https://example.com 2`
   - `python -m app.main search example`
   - `python -m app.main status`
+  - `python -m app.main serve --host 127.0.0.1 --port 8000`
+- The localhost server should expose start-index, search, and status operations.
 
-### Expected CLI Behavior
+### Expected Behavior
 
-- `index` should print at least a start message and a final summary.
+- `index` should print a final summary.
 - `search` should print one result per line in a readable triple-like format.
-- `status` should print the current status snapshot.
+- `status` should print the latest persisted status snapshot.
+- The localhost server should remain responsive while indexing runs in the background.
 
 ### Explicitly Deferred
 
-- A browser-based localhost UI.
-- Streaming progress in a separate dashboard.
-- Cross-process coordination between multiple CLI invocations.
+- A richer localhost UI or dashboard.
+- Streaming progress beyond periodic polling.
+- Multiple concurrent indexing jobs.
 
 ## Acceptance Criteria
 
-The next implementation sprint should be considered successful when all of the following are true:
+The delivered system should be considered successful when all of the following are true:
 
 - Running `index(origin, k)` on a small HTML site visits the origin at depth `0` and discovers child pages up to depth `k`.
 - The crawl uses BFS semantics.
@@ -324,37 +328,37 @@ The next implementation sprint should be considered successful when all of the f
 - The implementation remains single-machine, Python-based, and standard-library oriented.
 - The code structure still maps cleanly to the existing modules in `app/`.
 
-### Nice-To-Have But Not Required For The Next Sprint
+### Nice-To-Have But Not Required For The Delivered Version
 
-- Search against a partially built index while indexing is still running.
-- SQLite-backed persistence.
 - Resume after interruption.
-- Localhost UI.
+- More than one concurrent indexing job.
+- Richer UI polish or streaming result updates.
 
 ## Known Risks
 
 - URL normalization has many edge cases; an overly naive implementation can cause duplicate crawls or incorrect skipping.
 - Standard-library HTML parsing is less convenient than dedicated libraries, so malformed HTML may reduce extraction quality.
 - Same-host restriction may exclude some relevant pages, but it keeps the crawl bounded and explainable.
-- In-memory search by scanning all stored pages is simple but will not scale far beyond small demos.
+- SQLite-backed search currently scans all stored pages in Python, which is simple but will not scale far beyond small demos.
 - True concurrent search during active indexing introduces locking tradeoffs and may be awkward with a one-shot CLI.
 - The public web is unpredictable; timeouts, redirects, and bad markup must be handled defensively.
 
 ## Intentionally Deferred To Later Sprints
 
-- Search from a separate long-lived interface while indexing is actively mutating shared state.
 - A richer ranking system with stemming, phrase search, snippets, or inverted-index optimization.
-- SQLite persistence, resumable crawls, and crash recovery.
+- Resumable crawls and crash recovery beyond the current persisted latest-state approach.
 - Domain politeness controls beyond bounded queue pressure and reasonable HTTP timeouts.
 - Support for JavaScript-rendered pages.
 - Multi-origin crawl management.
-- A localhost web UI.
+- A richer localhost UI or dashboard.
 
 ## Future Improvements
 
-- Add optional SQLite storage behind the same `index_store` interface.
-- Add a minimal localhost UI that can show status and search results from a persistent process.
+- Expand the localhost UI with better progress and result presentation.
+- Add a small configurable worker count greater than one.
 - Add token caching or an inverted index if page counts grow enough to justify it.
 - Add result snippets and match highlighting.
 - Add per-domain policies, crawl delay, or request budgeting if broader crawling becomes necessary.
 - Add export or import of crawl snapshots for repeatable demos.
+
+

@@ -1,50 +1,52 @@
 # Recommendation
 
-## Recommended Direction
+## Recommended Delivery Position
 
-Use a small single-process Python application with:
-- BFS crawling
-- a worker pool with shared thread-safe state
-- a bounded queue for back pressure
-- in-memory storage first
-- a CLI first and optional localhost UI later
+The current implementation is already in a good delivery shape for the take-home
+assignment. It stays single-machine, Python-only, standard-library oriented, and
+keeps the core ideas easy to explain in a review.
+
+## Implemented Direction
+
+The project now uses:
+- BFS-oriented crawling with same-host restriction
+- a bounded frontier queue for simple back pressure
+- SQLite for persisted pages and latest status
+- deterministic search scored in Python
+- a CLI for `index`, `search`, and `status`
+- a minimal localhost server for background indexing, live status, and live search
 
 ## Why This Fits The Exercise
 
-Explain why this approach is easy to build, demo, and defend in a take-home.
+- The architecture is small enough to explain end-to-end.
+- The crawler, storage, search, and server layers are all easy to inspect.
+- The system demonstrates the assignment's important behaviors without adding
+  unnecessary infrastructure.
+- SQLite keeps the design local and practical while enabling separate CLI runs
+  and live reads during background indexing.
 
-## Proposed Components
+## Current Module Roles
 
-- `crawler.py`: accepts crawl requests and manages traversal later
-- `parser.py`: normalizes URLs and extracts links/text later
-- `index_store.py`: stores page records and search state
-- `search.py`: exposes the search interface
-- `status.py`: exposes progress and queue information
-- `models.py`: keeps shared data contracts small
-- `main.py`: provides a minimal CLI entry point
+- `crawler.py`: crawl coordination, bounded frontier, fetch worker flow
+- `parser.py`: URL normalization plus title/text/link extraction
+- `index_store.py`: SQLite-backed page persistence and search retrieval
+- `search.py`: thin search service over the store
+- `status.py`: persisted latest-run status snapshot
+- `server.py`: localhost UI / HTTP endpoints and background indexing manager
+- `main.py`: CLI entry point
 
-## Storage Recommendation
+## Tradeoffs Worth Mentioning In The Presentation
 
-Start with in-memory structures. Consider SQLite only if persistence or resume
-becomes important after the first working version.
+- Search ranking is intentionally simple and deterministic.
+- Same-host crawling keeps the demo bounded and predictable.
+- Only one background indexing job is allowed at a time.
+- Resume-after-crash is still out of scope.
+- The localhost UI is functional but intentionally minimal.
 
-## Concurrency Recommendation
+## If More Time Were Available
 
-Start with one process and a small worker pool. Keep shared state simple and use
-locks only where they are clearly needed.
-
-## Back Pressure Recommendation
-
-Use a bounded queue first. Add rate limiting only if queue pressure alone is not
-enough for a clean demo.
-
-## Suggested Sprint Sequence
-
-1. Implement HTTP fetch plus link extraction.
-2. Add BFS traversal with visited tracking and queue bounds.
-3. Add simple search indexing and query lookup.
-4. Surface live status in the CLI.
-
-## Tradeoffs
-
-List the main tradeoffs you want to mention in the take-home write-up.
+- add richer snippets or match highlighting in search results
+- allow a small configurable worker count greater than one
+- improve crawl politeness controls and observability
+- add stronger recovery/resume behavior
+- polish the localhost UI
