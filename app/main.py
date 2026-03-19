@@ -6,7 +6,7 @@ import argparse
 from collections.abc import Sequence
 
 from app.crawler import CrawlerService
-from app.index_store import InMemoryIndexStore
+from app.index_store import SQLiteIndexStore
 from app.search import SearchService
 from app.status import StatusService
 
@@ -25,11 +25,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     search_parser = subparsers.add_parser(
         "search",
-        help="Run a query against the placeholder index.",
+        help="Run a query against the persisted index.",
     )
     search_parser.add_argument("query", help="Query text.")
 
-    subparsers.add_parser("status", help="Print current status.")
+    subparsers.add_parser("status", help="Print current persisted status.")
     return parser
 
 
@@ -39,7 +39,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    store = InMemoryIndexStore()
+    store = SQLiteIndexStore()
     status_service = StatusService()
     crawler = CrawlerService(store=store, status_service=status_service)
     search_service = SearchService(store=store)
@@ -64,10 +64,25 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "search":
         results = search_service.search(args.query)
-        print(results)
+        if not results:
+            print("No results.")
+            return 0
+
+        for result in results:
+            print(
+                f"({result.relevant_url}, {result.origin_url}, {result.depth})"
+            )
         return 0
 
-    print(status_service.snapshot())
+    snapshot = status_service.snapshot()
+    print(f"Origin: {snapshot.origin_url}")
+    print(f"Max depth: {snapshot.max_depth}")
+    print(f"Indexed pages: {snapshot.indexed_pages}")
+    print(f"Queued URLs: {snapshot.queued_urls}")
+    print(f"Max queue size: {snapshot.max_queue_size}")
+    print(f"Back pressure active: {snapshot.back_pressure_active}")
+    print(f"Indexing active: {snapshot.is_indexing}")
+    print(f"Last message: {snapshot.last_message}")
     return 0
 
 

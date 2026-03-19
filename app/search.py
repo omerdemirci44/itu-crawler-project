@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from app.index_store import InMemoryIndexStore
+from app.index_store import SQLiteIndexStore
 from app.models import SearchResult
 
 
 class SearchService:
-    """Provide a thin interface for future query processing and ranking."""
+    """Provide a thin interface for query processing and ranking."""
 
-    def __init__(self, store: InMemoryIndexStore) -> None:
+    def __init__(self, store: SQLiteIndexStore) -> None:
         """Keep the search layer decoupled from the storage details."""
 
         self.store = store
