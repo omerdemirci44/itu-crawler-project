@@ -25,7 +25,8 @@ The current implementation includes:
 - deterministic SQLite-backed search
 - a small localhost server for background indexing, search, and status
 
-Current delivery-time limitations:
+### Current Delivery-Time Limitations
+
 - same-host crawling is still enforced
 - one background indexing job at a time
 - search scoring is intentionally simple and deterministic
@@ -74,6 +75,7 @@ status continue to work.
 
 The project stays single-machine and standard-library oriented. The crawler uses
 a bounded `queue.Queue` frontier, persists pages incrementally into SQLite, and
-updates a persisted latest-run status snapshot. The localhost server keeps a
-single background indexing thread alive so search and status can read the same
-SQLite database while indexing is still active.
+updates a persisted latest-run status snapshot.
+
+The localhost server keeps a single background indexing thread alive so search
+and status can read the same SQLite database while indexing is still active.
