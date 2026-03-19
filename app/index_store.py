@@ -17,6 +17,11 @@ class InMemoryIndexStore:
 
         self._pages: dict[str, PageRecord] = {}
 
+    def clear(self) -> None:
+        """Remove all stored page records for a fresh indexing run."""
+
+        self._pages.clear()
+
     def has_page(self, url: str) -> bool:
         """Return whether the given URL is already known to the store."""
 
@@ -40,3 +45,11 @@ class InMemoryIndexStore:
         """Return the number of stored pages."""
 
         return len(self._pages)
+
+    def list_pages(self, limit: int | None = None) -> list[PageRecord]:
+        """Return stored pages in insertion order for status or CLI output."""
+
+        pages = list(self._pages.values())
+        if limit is None:
+            return pages
+        return pages[:limit]

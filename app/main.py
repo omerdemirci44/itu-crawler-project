@@ -1,4 +1,4 @@
-"""Minimal CLI entry point for the Sprint 0 scaffold."""
+"""Minimal CLI entry point for the crawler project."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Wire the placeholder services together for Sprint 0."""
+    """Wire the crawler services together for CLI usage."""
 
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -45,11 +45,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     search_service = SearchService(store=store)
 
     if args.command == "index":
-        request = crawler.index(args.origin, args.depth)
-        print(
-            "Sprint 0 scaffold accepted index request: "
-            f"{request.origin_url} depth={request.max_depth}"
-        )
+        try:
+            request = crawler.index(args.origin, args.depth)
+        except ValueError as error:
+            parser.error(str(error))
+
+        snapshot = status_service.snapshot()
+        print(f"Origin: {request.origin_url}")
+        print(f"Max depth: {request.max_depth}")
+        print(f"Indexed pages: {snapshot.indexed_pages}")
+
+        sample_pages = store.list_pages(limit=5)
+        if sample_pages:
+            print("Stored URLs:")
+            for page in sample_pages:
+                print(f"- {page.url}")
         return 0
 
     if args.command == "search":
