@@ -64,7 +64,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.command == "build-search-data":
-        from app.quiz import generate_fixture_crawl_data
+        from app.raw_search_storage import generate_fixture_crawl_data
 
         summary = generate_fixture_crawl_data(max_depth=args.depth)
         print(f"Origin: {summary['origin']}")

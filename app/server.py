@@ -16,7 +16,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 from app.crawler import CrawlerService
 from app.index_store import SQLiteIndexStore
 from app.parser import normalize_url
-from app.quiz import search_letter_storage
+from app.raw_search_storage import search_letter_storage
 from app.search import SearchService
 from app.status import StatusService
 

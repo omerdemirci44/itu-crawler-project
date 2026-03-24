@@ -1,4 +1,4 @@
-﻿"""Quiz-compatible storage helpers built around letter-sharded raw files."""
+﻿"""Raw search storage helpers for the letter-sharded compatibility flow."""
 
 from __future__ import annotations
 

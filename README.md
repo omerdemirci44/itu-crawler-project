@@ -42,7 +42,7 @@ app/
   crawler.py
   parser.py
   index_store.py
-  quiz.py
+  raw_search_storage.py
   search.py
   server.py
   status.py

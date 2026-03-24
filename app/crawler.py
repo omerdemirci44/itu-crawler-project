@@ -133,7 +133,7 @@ class CrawlerService:
             worker.join()
 
         try:
-            from app.quiz import generate_storage_from_pages
+            from app.raw_search_storage import generate_storage_from_pages
 
             generate_storage_from_pages(self.store.list_pages())
         except Exception as error:
