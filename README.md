@@ -24,7 +24,7 @@ The current implementation includes:
 - persisted status for the latest crawl run
 - deterministic SQLite-backed search
 - a single localhost server for background indexing, status, app search, and quiz-compatible search
-- letter-sharded quiz storage files in `data/storage/[letter].data`
+- letter-sharded raw search storage files in `data/storage/[letter].data`
 
 ### Current Delivery-Time Limitations
 
@@ -84,13 +84,13 @@ python -m app.main status
 
 ## Quiz Compatibility
 
-The raw quiz storage lives under `data/storage/` and is sharded by first letter.
+The raw search storage lives under `data/storage/` and is sharded by first letter.
 Examples:
 - `a.data` contains `a...` words
 - `c.data` contains `c...` words
 - `p.data` contains `p...` words only
 
-Each line keeps the exact quiz-compatible format:
+Each line follows the deterministic compatibility format:
 
 ```text
 word url origin depth frequency
@@ -103,7 +103,7 @@ python -m app.main build-search-data
 ```
 
 The committed fixture includes the word `page` on multiple URLs so `p.data` is
-real, visible in GitHub, and directly usable in the quiz path.
+real, visible in GitHub, and directly usable in the compatibility flow.
 
 ## UI Routes
 
@@ -119,7 +119,7 @@ real, visible in GitHub, and directly usable in the quiz path.
 
 `/api/search` is the app's SQLite-backed JSON search route.
 `/search` is the quiz-compatible JSON route that reads from the letter-sharded
-raw files.
+raw search storage files.
 
 ## Local Demo
 
@@ -154,6 +154,6 @@ a bounded `queue.Queue` frontier, persists pages incrementally into SQLite, and
 updates a persisted latest-run status snapshot.
 
 The same main localhost server exposes the HTML dashboard pages, the app JSON
-status and search endpoints, and the quiz-compatible search endpoint. Search data
-is exported after crawling into deterministic letter-sharded storage files so
-raw storage and quiz-compatible search stay aligned.
+status and search endpoints, and the quiz-compatible search route. Search data
+is exported after crawling into deterministic letter-sharded raw storage files so
+the raw storage and compatibility route stay aligned.
