@@ -159,7 +159,7 @@ def search_letter_storage(query: str, sort_by: str | None = None) -> dict[str, o
 
 
 class _FixtureRequestHandler(SimpleHTTPRequestHandler):
-    """Serve the local fixture site without noisy request logs."""
+    """Serve the committed local site without noisy request logs."""
 
     def log_message(self, format: str, *args: object) -> None:
         return
@@ -167,7 +167,7 @@ class _FixtureRequestHandler(SimpleHTTPRequestHandler):
 
 @contextmanager
 def fixture_site_server() -> None:
-    """Run a temporary local HTTP server for the committed fixture site."""
+    """Run a local HTTP server for the committed site files."""
 
     handler = partial(_FixtureRequestHandler, directory=str(FIXTURE_SITE_DIR))
     server = ThreadingHTTPServer((FIXTURE_HOST, FIXTURE_PORT), handler)
@@ -182,7 +182,7 @@ def fixture_site_server() -> None:
 
 
 def generate_fixture_crawl_data(max_depth: int = 1) -> dict[str, object]:
-    """Crawl the committed fixture site and regenerate letter-sharded storage."""
+    """Crawl the committed local site and regenerate letter-sharded storage."""
 
     from app.crawler import CrawlerService
     from app.index_store import SQLiteIndexStore

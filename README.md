@@ -123,13 +123,7 @@ raw search storage files.
 
 ## Local Demo
 
-Fixture site in one terminal if you want to inspect it directly:
-
-```bash
-python -m http.server 3610 --directory data/fixture_site
-```
-
-Main app in another terminal:
+Main app:
 
 ```bash
 python -m app.main build-search-data

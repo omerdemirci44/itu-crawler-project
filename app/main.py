@@ -42,13 +42,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     generate_parser = subparsers.add_parser(
         "build-search-data",
-        help="Crawl the committed fixture site and rebuild the raw search storage.",
+        help="Crawl the committed local site and rebuild the raw search storage.",
     )
     generate_parser.add_argument(
         "--depth",
         type=int,
         default=1,
-        help="Maximum crawl depth for the committed fixture site.",
+        help="Maximum crawl depth for the committed local site.",
     )
     return parser
 
