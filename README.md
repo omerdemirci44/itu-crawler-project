@@ -1,4 +1,4 @@
-# itu-crawler-project
+﻿# itu-crawler-project
 
 Small localhost-runnable web crawler and search project for a take-home exercise.
 
@@ -23,9 +23,8 @@ The current implementation includes:
 - SQLite-backed page persistence in `crawler.db`
 - persisted status for the latest crawl run
 - deterministic SQLite-backed search
-- a small localhost server for background indexing, search, and status
-- a quiz-compatible raw storage export at `data/storage/p.data`
-- a quiz-compatible HTTP API at `GET /search?query=<word>&sortBy=relevance`
+- a single localhost server for background indexing, status, app search, and quiz-compatible search
+- letter-sharded quiz storage files in `data/storage/[letter].data`
 
 ### Current Delivery-Time Limitations
 
@@ -33,7 +32,7 @@ The current implementation includes:
 - one background indexing job at a time
 - search scoring is intentionally simple and deterministic
 - resume / crash recovery is not fully implemented
-- the localhost UI is intentionally minimal
+- the localhost UI is intentionally lightweight
 
 ## Repository Layout
 
@@ -48,6 +47,9 @@ app/
   server.py
   status.py
   models.py
+  static/
+    styles.css
+    app.js
 data/
   fixture_site/
     index.html
@@ -55,65 +57,95 @@ data/
     guide.html
     faq.html
   storage/
+    a.data
+    c.data
     p.data
+    ...
 docs/
   product_prd.md
   recommendation.md
 crawler.db
 ```
 
-## CLI Usage
+## Run
+
+```bash
+python -m app.main generate-quiz-data
+python -m app.main serve --host 127.0.0.1 --port 3600
+```
+
+Other CLI commands still work:
 
 ```bash
 python -m app.main index https://example.com 1
 python -m app.main search example
 python -m app.main status
-python -m app.main serve --host 127.0.0.1 --port 8000
-python -m app.main generate-quiz-data
-python -m app.main serve-quiz --host 127.0.0.1 --port 3600
 ```
-
-`index`, `search`, and `status` work as separate CLI commands. `serve` starts a
-localhost process that can run indexing in the background while search and
-status continue to work.
 
 ## Quiz Compatibility
 
-The repository includes a real generated quiz storage file at:
-- `data/storage/p.data`
+The raw quiz storage lives under `data/storage/` and is sharded by first letter.
+Examples:
+- `a.data` contains `a...` words
+- `c.data` contains `c...` words
+- `p.data` contains `p...` words only
 
-That file is produced from actual crawled page content using the committed local
-fixture site in `data/fixture_site/`.
+Each line keeps the exact quiz-compatible format:
 
-To regenerate the fixture crawl data and rebuild `p.data`:
+```text
+word url origin depth frequency
+```
+
+To regenerate the committed fixture-based storage honestly from a real crawl:
 
 ```bash
 python -m app.main generate-quiz-data
 ```
 
-To run the quiz-compatible API on the expected localhost port:
+The committed fixture includes the word `page` on multiple URLs so `p.data` is
+real, visible in GitHub, and directly usable in the quiz path.
+
+## UI Routes
+
+- `/`
+- `/status-page`
+- `/search-page`
+
+## JSON / API Routes
+
+- `/status`
+- `/api/search?q=page`
+- `/search?query=page&sortBy=relevance`
+
+`/api/search` is the app's SQLite-backed JSON search route.
+`/search` is the quiz-compatible JSON route that reads from the letter-sharded
+raw files.
+
+## Local Demo
+
+Fixture site in one terminal if you want to inspect it directly:
 
 ```bash
-python -m app.main serve-quiz --host 127.0.0.1 --port 3600
+python -m http.server 3610 --directory data/fixture_site
 ```
 
-Then test the expected route directly:
+Main app in another terminal:
+
+```bash
+python -m app.main generate-quiz-data
+python -m app.main serve --host 127.0.0.1 --port 3600
+```
+
+Example checks:
 
 ```text
-GET http://localhost:3600/search?query=crawler&sortBy=relevance
+http://127.0.0.1:3600/
+http://127.0.0.1:3600/status-page
+http://127.0.0.1:3600/search-page
+http://127.0.0.1:3600/status
+http://127.0.0.1:3600/api/search?q=page
+http://127.0.0.1:3600/search?query=page&sortBy=relevance
 ```
-
-The quiz API reads from the same generated `data/storage/p.data` file, so the
-raw file and API results stay consistent.
-
-## Localhost Interface
-
-- `GET /` renders the crawler dashboard.
-- `GET /status-page` renders the HTML status dashboard.
-- `GET /search-page?q=...` renders the HTML search dashboard.
-- `POST /start-index` starts one background indexing run.
-- `GET /status` returns JSON status.
-- `GET /search?q=...` returns JSON results for the existing app server.
 
 ## Architecture Summary
 
@@ -121,9 +153,7 @@ The project stays single-machine and standard-library oriented. The crawler uses
 a bounded `queue.Queue` frontier, persists pages incrementally into SQLite, and
 updates a persisted latest-run status snapshot.
 
-The localhost server keeps a single background indexing thread alive so search
-and status can read the same SQLite database while indexing is still active.
-
-For quiz compatibility, crawled pages are also converted into a deterministic
-raw word-frequency file at `data/storage/p.data`, and a dedicated localhost API
-serves exact quiz-compatible relevance scoring from that file.
+The same main localhost server exposes the HTML dashboard pages, the app JSON
+status and search endpoints, and the quiz-compatible search endpoint. Quiz data
+is exported after crawling into deterministic letter-sharded storage files so
+raw storage and quiz search stay aligned.

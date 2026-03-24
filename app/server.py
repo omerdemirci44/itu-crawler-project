@@ -16,6 +16,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 from app.crawler import CrawlerService
 from app.index_store import SQLiteIndexStore
 from app.parser import normalize_url
+from app.quiz import search_letter_storage
 from app.search import SearchService
 from app.status import StatusService
 
@@ -108,8 +109,11 @@ class CrawlerRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/status":
             self._serve_status_json()
             return
-        if parsed.path == "/search":
+        if parsed.path == "/api/search":
             self._serve_search_json(parsed)
+            return
+        if parsed.path == "/search":
+            self._serve_quiz_search_json(parsed)
             return
         self.send_error(HTTPStatus.NOT_FOUND, "Not found")
 
@@ -325,7 +329,7 @@ class CrawlerRequestHandler(BaseHTTPRequestHandler):
               </div>
               <div class="result-actions">
                 <button type="button" class="button button-ghost" data-copy-text="{escape(result['url'], quote=True)}">Copy URL</button>
-                <a class="text-link" href="/search?{urlencode({'q': query})}">JSON search</a>
+                <a class="text-link" href="/api/search?{urlencode({'q': query})}">JSON search</a>
               </div>
             </article>
             """
@@ -382,6 +386,12 @@ class CrawlerRequestHandler(BaseHTTPRequestHandler):
         query = parse_qs(parsed.query).get("q", [""])[0]
         results = [asdict(result) for result in self.server.app.search_service.search(query)]
         self._send_json({"query": query, "results": results})
+
+    def _serve_quiz_search_json(self, parsed) -> None:
+        params = parse_qs(parsed.query)
+        query = params.get("query", [""])[0]
+        sort_by = params.get("sortBy", ["relevance"])[0] or "relevance"
+        self._send_json(search_letter_storage(query, sort_by=sort_by))
 
     def _build_search_view_results(self, query: str) -> list[dict[str, object]]:
         normalized_query = " ".join(query.lower().split())
