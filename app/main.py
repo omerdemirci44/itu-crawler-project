@@ -39,16 +39,10 @@ def build_parser() -> argparse.ArgumentParser:
     serve_parser.add_argument("--host", default="127.0.0.1", help="Host to bind.")
     serve_parser.add_argument("--port", type=int, default=3600, help="Port to bind.")
 
-    serve_quiz_parser = subparsers.add_parser(
-        "serve-quiz",
-        help=argparse.SUPPRESS,
-    )
-    serve_quiz_parser.add_argument("--host", default="127.0.0.1", help=argparse.SUPPRESS)
-    serve_quiz_parser.add_argument("--port", type=int, default=3600, help=argparse.SUPPRESS)
 
     generate_parser = subparsers.add_parser(
-        "generate-quiz-data",
-        help="Crawl the committed fixture site and regenerate letter-sharded storage.",
+        "build-search-data",
+        help="Crawl the committed fixture site and rebuild the raw search storage.",
     )
     generate_parser.add_argument(
         "--depth",
@@ -65,11 +59,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    if args.command in {"serve", "serve-quiz"}:
+    if args.command == "serve":
         run_server(host=args.host, port=args.port)
         return 0
 
-    if args.command == "generate-quiz-data":
+    if args.command == "build-search-data":
         from app.quiz import generate_fixture_crawl_data
 
         summary = generate_fixture_crawl_data(max_depth=args.depth)

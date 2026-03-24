@@ -509,7 +509,7 @@ class CrawlerRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
-def run_server(host: str = "127.0.0.1", port: int = 8000, max_queue_size: int = 128) -> None:
+def run_server(host: str = "127.0.0.1", port: int = 3600, max_queue_size: int = 128) -> None:
     app = LocalCrawlerApplication(max_queue_size=max_queue_size)
     server = CrawlerHTTPServer((host, port), app)
     print(f"Serving on http://{host}:{port}")

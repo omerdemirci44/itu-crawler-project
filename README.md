@@ -70,7 +70,7 @@ crawler.db
 ## Run
 
 ```bash
-python -m app.main generate-quiz-data
+python -m app.main build-search-data
 python -m app.main serve --host 127.0.0.1 --port 3600
 ```
 
@@ -96,10 +96,10 @@ Each line keeps the exact quiz-compatible format:
 word url origin depth frequency
 ```
 
-To regenerate the committed fixture-based storage honestly from a real crawl:
+To rebuild the committed raw search storage honestly from a real crawl:
 
 ```bash
-python -m app.main generate-quiz-data
+python -m app.main build-search-data
 ```
 
 The committed fixture includes the word `page` on multiple URLs so `p.data` is
@@ -132,7 +132,7 @@ python -m http.server 3610 --directory data/fixture_site
 Main app in another terminal:
 
 ```bash
-python -m app.main generate-quiz-data
+python -m app.main build-search-data
 python -m app.main serve --host 127.0.0.1 --port 3600
 ```
 
@@ -154,6 +154,6 @@ a bounded `queue.Queue` frontier, persists pages incrementally into SQLite, and
 updates a persisted latest-run status snapshot.
 
 The same main localhost server exposes the HTML dashboard pages, the app JSON
-status and search endpoints, and the quiz-compatible search endpoint. Quiz data
+status and search endpoints, and the quiz-compatible search endpoint. Search data
 is exported after crawling into deterministic letter-sharded storage files so
-raw storage and quiz search stay aligned.
+raw storage and quiz-compatible search stay aligned.
