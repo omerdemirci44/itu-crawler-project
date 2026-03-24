@@ -108,7 +108,9 @@ raw file and API results stay consistent.
 
 ## Localhost Interface
 
-- `GET /` renders a minimal HTML page with forms for indexing and search.
+- `GET /` renders the crawler dashboard.
+- `GET /status-page` renders the HTML status dashboard.
+- `GET /search-page?q=...` renders the HTML search dashboard.
 - `POST /start-index` starts one background indexing run.
 - `GET /status` returns JSON status.
 - `GET /search?q=...` returns JSON results for the existing app server.
