@@ -40,7 +40,7 @@ class _CrawlResult:
 class CrawlerService:
     """Perform a simple single-process BFS crawl and store HTML pages."""
 
-    USER_AGENT = "itu-crawler-project/0.4"
+    USER_AGENT = "itu-crawler-project/0.5"
 
     def __init__(
         self,
@@ -131,6 +131,14 @@ class CrawlerService:
             frontier.put(_STOP)
         for worker in workers:
             worker.join()
+
+        try:
+            from app.quiz import generate_storage_from_pages
+
+            generate_storage_from_pages(self.store.list_pages())
+        except Exception as error:
+            self.status_service.finish(f"crawl export failed: {error}")
+            raise
 
         self.status_service.finish(
             f"crawl complete: {self.store.page_count()} pages indexed"

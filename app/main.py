@@ -38,6 +38,33 @@ def build_parser() -> argparse.ArgumentParser:
     )
     serve_parser.add_argument("--host", default="127.0.0.1", help="Host to bind.")
     serve_parser.add_argument("--port", type=int, default=8000, help="Port to bind.")
+
+    serve_quiz_parser = subparsers.add_parser(
+        "serve-quiz",
+        help="Run the quiz-compatible API on localhost:3600.",
+    )
+    serve_quiz_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host to bind.",
+    )
+    serve_quiz_parser.add_argument(
+        "--port",
+        type=int,
+        default=3600,
+        help="Port to bind.",
+    )
+
+    generate_parser = subparsers.add_parser(
+        "generate-quiz-data",
+        help="Crawl the committed fixture site and regenerate data/storage/p.data.",
+    )
+    generate_parser.add_argument(
+        "--depth",
+        type=int,
+        default=1,
+        help="Maximum crawl depth for the committed fixture site.",
+    )
     return parser
 
 
@@ -49,6 +76,21 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "serve":
         run_server(host=args.host, port=args.port)
+        return 0
+
+    if args.command == "serve-quiz":
+        from app.quiz import run_quiz_server
+
+        run_quiz_server(host=args.host, port=args.port)
+        return 0
+
+    if args.command == "generate-quiz-data":
+        from app.quiz import generate_fixture_crawl_data
+
+        summary = generate_fixture_crawl_data(max_depth=args.depth)
+        print(f"Origin: {summary['origin']}")
+        print(f"Storage path: {summary['storage_path']}")
+        print(f"Entry count: {summary['entry_count']}")
         return 0
 
     store = SQLiteIndexStore()
